@@ -5,12 +5,9 @@ const dailySaleRoutes = require('./routes/dailySaleRoutes');
 const branchRoutes = require('./routes/branchRoutes'); // Adjust path as needed
 const userRoutes = require('./routes/userRoutes'); // Adjust path as needed
 const salesRoutes = require('./routes/salesRoutes'); // Adjust path as needed
-const dotenv = require("dotenv");
+
 const app = express();
 const PORT = 3000;
-
-// Load environment variables
-dotenv.config();
 
 
 // Middleware
