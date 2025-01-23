@@ -1,23 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db'); // Database connection
+const bcrypt = require('bcrypt'); // Import bcrypt for password hashing
 
-// Register a new user
 router.post('/register', async (req, res) => {
   const { username, password, branch } = req.body;
 
-  // Validate input
   if (!username || !password || !branch) {
     return res.status(400).json({ error: 'All fields are required.' });
   }
 
   try {
-    // Insert user into the users table
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert user into the database
     const query = `
       INSERT INTO users (username, password, branch, role)
       VALUES (?, ?, ?, ?)
     `;
-    const [result] = await db.execute(query, [username, password, branch, 'user']);
+    const [result] = await db.execute(query, [username, hashedPassword, branch, 'user']);
 
     res.status(201).json({ message: 'User registered successfully!', id: result.insertId });
   } catch (err) {
@@ -26,33 +28,43 @@ router.post('/register', async (req, res) => {
   }
 });
 
+
 // Login user
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
-  // Validate input
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required.' });
   }
 
   try {
-    // Query to check if the user exists
+    // Query to get user details
     const query = `
-      SELECT username, branch FROM users WHERE username = ? AND password = ?
+      SELECT id, username, branch, password FROM users WHERE username = ?
     `;
-    const [users] = await db.execute(query, [username, password]);
+    const [users] = await db.execute(query, [username]);
 
     if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
-    // Return user details
-    res.status(200).json(users[0]);
+    const user = users[0];
+
+    // Compare hashed password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid username or password.' });
+    }
+
+    // Return user details (excluding password)
+    const { id, username: userName, branch } = user;
+    res.status(200).json({ id, username: userName, branch });
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ error: 'Failed to login. Please try again later.' });
   }
 });
+
 
 // Get logged-in user details
 router.get('/user', async (req, res) => {
