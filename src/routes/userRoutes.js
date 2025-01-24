@@ -88,6 +88,64 @@ router.get('/user', async (req, res) => {
   }
 });
 
+// Fetch all users
+router.get('/users', async (req, res) => {
+  try {
+    const query = 'SELECT id, username, branch FROM users';
+    const [users] = await db.execute(query);
+    res.status(200).json(users);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to fetch users.' });
+  }
+});
+
+// Update user
+router.put('/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { username, password, branch } = req.body;
+
+  if (!username || !branch) {
+    return res.status(400).json({ error: 'Username and branch are required.' });
+  }
+
+  try {
+    const updateFields = ['username', 'branch'];
+    const params = [username, branch];
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateFields.push('password');
+      params.push(hashedPassword);
+    }
+
+    params.push(id);
+    const query = `
+      UPDATE users SET ${updateFields.map((field) => `${field} = ?`).join(', ')}
+      WHERE id = ?
+    `;
+    await db.execute(query, params);
+
+    res.status(200).json({ message: 'User updated successfully!' });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to update user.' });
+  }
+});
+
+// Delete user
+router.delete('/users/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const query = 'DELETE FROM users WHERE id = ?';
+    await db.execute(query, [id]);
+    res.status(200).json({ message: 'User deleted successfully!' });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ error: 'Failed to delete user.' });
+  }
+});
 
 
 module.exports = router;
